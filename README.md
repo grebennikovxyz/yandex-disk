@@ -1,5 +1,13 @@
 # Plaugin for Ya-Di
 
+[![Boosty](https://img.shields.io/badge/Boosty-F15F2C?style=flat&logo=boosty&logoColor=white)](https://boosty.to/grebennikov.xyz/donate)<br>
+<https://boosty.to/grebennikov.xyz/donate>
+
+[![Последний опубликованный релиз](https://img.shields.io/github/v/release/grebennikovxyz/yandex-disk?include_prereleases&label=version&color=007ec6)](https://github.com/grebennikovxyz/yandex-disk/releases)
+[![Лицензия](https://img.shields.io/github/license/grebennikovxyz/yandex-disk?label=license&color=d4a600)](https://github.com/grebennikovxyz/yandex-disk/blob/main/LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/grebennikovxyz/yandex-disk?style=social)](https://github.com/grebennikovxyz/yandex-disk/stargazers)
+[![Сборка и тесты](https://github.com/grebennikovxyz/yandex-disk/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/grebennikovxyz/yandex-disk/actions/workflows/release.yml)
+
 <img src="plugins/yandex-disk/assets/yandex-disk-codex.png" width="96" height="96" alt="Сиреневое облако с тремя офисными файлами">
 
 Неофициальный ИИ-плагин для работы с Яндекс Диском из Codex и ChatGPT. Плагин использует API Яндекс Диска. Исключительное право на товарный знак «Яндекс» принадлежит ООО «ЯНДЕКС». [Условия API](https://yandex.ru/legal/disk_api/ru/)
@@ -12,7 +20,7 @@
 
 Плагин подключает личный Диск через Яндекс ID. Можно найти фразу внутри документа, обновить ячейку в таблице, создать презентацию, сохранить вложение чата или восстановить файл из корзины. Загрузка и обработка идут с вашего компьютера.
 
-Автор — **Anton @grebennikov.xyz**. [Проект на GitHub](https://github.com/grebennikovxyz/yandex-disk) · [Поддержать на Boosty](https://boosty.to/grebennikov.xyz/donate)
+Автор — **Anton @grebennikov.xyz**. [Проект на GitHub](https://github.com/grebennikovxyz/yandex-disk)
 
 ## Установка для Codex и ChatGPT Desktop
 
@@ -84,10 +92,6 @@ codex plugin add yandex-disk@grebennikov-plugins
 Локальная папка приложения содержит индекс выбранных документов и недавние исходные версии офисных файлов для разрешения конфликтов. Срок повторного использования исходника — сутки, общий предел кэша — 128 МиБ. Очистка просроченных версий выполняется при записи следующих. Для веб-запроса сохраняются краткое описание операции и зашифрованные аргументы. Ключ расшифровки есть в одноразовом билете. Телеметрии проекта нет.
 
 `yandex-disk-plugin logout` удаляет локальный вход, индекс, кэш версий и очередь подтверждений. Скачанные пользователем файлы остаются в Загрузках. Для полного отзыва разрешения удалите приложение в [Яндекс ID](https://id.yandex.ru/profile/access), остановите клиент туннеля и отключите плагин в ChatGPT.
-
-## Собственное OAuth-приложение
-
-Встроенный публичный Client ID можно заменить через `login --client-id ID`. Зарегистрируйте права `cloud_api:disk.info`, `cloud_api:disk.read`, `cloud_api:disk.write`. Первым Redirect URI укажите `http://127.0.0.1:53681/callback`. Для ручного режима добавьте `https://oauth.yandex.ru/verification_code`. Сервер проверяет Host и случайный параметр state. Если публичная карточка указывает посторонний основной адрес возврата, вход остановится до открытия страницы согласия. [Яндекс OAuth](https://yandex.ru/dev/id/doc/ru/codes/code-url)
 
 ## Проверка и лицензия
 
