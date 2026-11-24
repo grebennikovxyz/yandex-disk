@@ -79,6 +79,11 @@ def run():
             assert plugin["mcpServers"], (
                 "Codex did not find the plugin MCP configuration"
             )
+            assert any(
+                s["name"] == "yandex-disk:yandex-disk" and s["enabled"]
+                for s in plugin["skills"]
+            ), f"Unexpected plugin skills: {[(s['name'], s['enabled']) for s in plugin['skills']]}"
+            print("Codex discovered the enabled yandex-disk skill.", flush=True)
             print("Codex recognized:", plugin["mcpServers"], flush=True)
             session = request("thread/start", {"ephemeral": True, "cwd": str(root)})
             tid = session["thread"]["id"]

@@ -67,17 +67,8 @@ def setup_web(tunnel_id):
         )
     if not tunnel_id.startswith("tunnel_") or not tunnel_id.replace("_", "").isalnum():
         raise Problem("Введите действительный tunnel_id из OpenAI Platform.")
-    plugin = shutil.which("yandex-disk-plugin")
-    if not plugin:
+    if not shutil.which("yandex-disk-plugin"):
         raise Problem("Добавьте yandex-disk-plugin в PATH.")
-    # The tunnel accepts a command line as a single SDK parameter.
-    import shlex
-
-    cmdline = (
-        subprocess.list2cmdline([plugin, "serve-web"])
-        if os.name == "nt"
-        else shlex.join([plugin, "serve-web"])
-    )
     result = subprocess.run(
         [
             executable,
@@ -89,7 +80,9 @@ def setup_web(tunnel_id):
             "--tunnel-id",
             tunnel_id,
             "--mcp-command",
-            cmdline,
+            "yandex-disk-plugin serve-web",
+            "--health-listen-addr",
+            "127.0.0.1:0",
         ],
         check=False,
     )
@@ -116,7 +109,7 @@ def main():
     p = argparse.ArgumentParser(
         prog="yandex-disk-plugin", description="Личный Яндекс Диск для Codex и ChatGPT"
     )
-    p.add_argument("--version", action="version", version="%(prog)s 0.1.0")
+    p.add_argument("--version", action="version", version="%(prog)s 0.1.1")
     sub = p.add_subparsers(dest="action", required=True)
     form = sub.add_parser("connect", help="Открыть окно входа через Яндекс")
     form.add_argument("--client-id")
