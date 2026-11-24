@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "grebennikov-yandex-disk"
+version = "0.1.0"
+description = "Personal Yandex Disk plugin for Codex and ChatGPT"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{name = "Антон Геннадьевич Гребенников"}]
+dependencies = [
+  "mcp>=1.25,<2", "httpx>=0.28,<1", "keyring>=25,<26", "cryptography>=45",
+  "platformdirs>=4,<5", "python-docx>=1.2,<2", "openpyxl>=3.1.5,<4",
+  "python-pptx>=1,<2", "pypdf>=6,<8", "defusedxml>=0.7,<1", "filelock>=3.16,<4"
+]
+
+[project.urls]
+Source = "https://github.com/grebennikovxyz/yandex-disk"
+
+[project.scripts]
+yandex-disk-plugin = "ydisk_plugin.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ydisk_plugin"]

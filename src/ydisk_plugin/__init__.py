@@ -1,0 +1,1 @@
+"""Personal Yandex Disk plugin."""

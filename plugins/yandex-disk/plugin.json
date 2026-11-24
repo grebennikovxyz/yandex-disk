@@ -1,0 +1,29 @@
+{
+  "name": "yandex-disk",
+  "version": "0.1.0",
+  "description": "Личный Яндекс Диск. Поиск, файлы, документы, таблицы и презентации.",
+  "author": {
+    "name": "Антон Геннадьевич Гребенников",
+    "url": "https://github.com/grebennikovxyz/yandex-disk"
+  },
+  "homepage": "https://github.com/grebennikovxyz/yandex-disk",
+  "repository": "https://github.com/grebennikovxyz/yandex-disk",
+  "license": "Apache-2.0",
+  "extensions": {
+    "com.openai": {
+      "requires_local_executor": true,
+      "interface": {
+        "displayName": "Яндекс Диск",
+        "logo": "./assets/yandex-disk-codex.png",
+        "composerIcon": "./assets/yandex-disk-codex.png",
+        "shortDescription": "Файлы и офисные документы на вашем Диске",
+        "developerName": "Антон Геннадьевич Гребенников",
+        "category": "Productivity",
+        "defaultPrompt": [
+          "Найди документ по фразе внутри",
+          "Обнови ячейку в таблице на Диске"
+        ]
+      }
+    }
+  }
+}

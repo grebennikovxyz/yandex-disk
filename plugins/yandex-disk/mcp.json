@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "yandex-disk": {
+      "type": "stdio",
+      "command": "yandex-disk-plugin",
+      "args": [
+        "serve"
+      ]
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "grebennikov-plugins",
+  "interface": {
+    "displayName": "Grebennikov Plugins"
+  },
+  "plugins": [
+    {
+      "name": "yandex-disk",
+      "source": {
+        "source": "local",
+        "path": "./plugins/yandex-disk"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
