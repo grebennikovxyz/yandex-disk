@@ -1,9 +1,9 @@
 {
   "name": "yandex-disk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Личный Яндекс Диск с поиском и офисными документами.",
   "author": {
-    "name": "Антон Геннадьевич Гребенников",
+    "name": "Anton @grebennikov.xyz",
     "url": "https://github.com/grebennikovxyz/yandex-disk"
   },
   "repository": "https://github.com/grebennikovxyz/yandex-disk",
@@ -14,7 +14,7 @@
   "interface": {
     "displayName": "Яндекс Диск",
     "shortDescription": "Файлы и офисные документы на вашем Диске",
-    "developerName": "Антон Геннадьевич Гребенников",
+    "developerName": "Anton @grebennikov.xyz",
     "category": "Productivity",
     "logo": "./assets/yandex-disk-codex.png",
     "composerIcon": "./assets/yandex-disk-codex.png"

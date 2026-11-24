@@ -1,9 +1,10 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "yandex-disk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Личный Яндекс Диск. Поиск, файлы, документы, таблицы и презентации.",
   "author": {
-    "name": "Антон Геннадьевич Гребенников",
+    "name": "Anton @grebennikov.xyz",
     "url": "https://github.com/grebennikovxyz/yandex-disk"
   },
   "homepage": "https://github.com/grebennikovxyz/yandex-disk",
@@ -17,7 +18,7 @@
         "logo": "./assets/yandex-disk-codex.png",
         "composerIcon": "./assets/yandex-disk-codex.png",
         "shortDescription": "Файлы и офисные документы на вашем Диске",
-        "developerName": "Антон Геннадьевич Гребенников",
+        "developerName": "Anton @grebennikov.xyz",
         "category": "Productivity",
         "defaultPrompt": [
           "Найди документ по фразе внутри",

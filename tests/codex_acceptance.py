@@ -1,19 +1,18 @@
 """Verify discovery by the installed Codex binary in a clean local profile."""
 
+import argparse
 import json
 import os
 import queue
 import shutil
 import subprocess
-import sys
 import tempfile
 import threading
 import time
 from pathlib import Path
 
 
-def run():
-    root = Path(__file__).resolve().parents[1]
+def run(root, profile_check):
     codex = shutil.which("codex.exe") or shutil.which("codex")
     if not codex:
         raise RuntimeError("Codex CLI is required")
@@ -82,7 +81,9 @@ def run():
             assert any(
                 s["name"] == "yandex-disk:yandex-disk" and s["enabled"]
                 for s in plugin["skills"]
-            ), f"Unexpected plugin skills: {[(s['name'], s['enabled']) for s in plugin['skills']]}"
+            ), (
+                f"Unexpected plugin skills: {[(s['name'], s['enabled']) for s in plugin['skills']]}"
+            )
             print("Codex discovered the enabled yandex-disk skill.", flush=True)
             print("Codex recognized:", plugin["mcpServers"], flush=True)
             session = request("thread/start", {"ephemeral": True, "cwd": str(root)})
@@ -115,7 +116,7 @@ def run():
                     )
                 time.sleep(1)
             print("Tools discovered by Codex:", len(ydisk["tools"]), flush=True)
-            if "--profile-check" in sys.argv:
+            if profile_check:
                 result = request(
                     "mcpServer/tool/call",
                     {
@@ -140,4 +141,10 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--marketplace-root", type=Path, default=Path(__file__).resolve().parents[1]
+    )
+    parser.add_argument("--profile-check", action="store_true")
+    options = parser.parse_args()
+    run(options.marketplace_root.resolve(), options.profile_check)

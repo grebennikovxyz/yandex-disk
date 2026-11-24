@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import subprocess
+from importlib.metadata import version
 
 import httpx
 
@@ -109,7 +110,11 @@ def main():
     p = argparse.ArgumentParser(
         prog="yandex-disk-plugin", description="Личный Яндекс Диск для Codex и ChatGPT"
     )
-    p.add_argument("--version", action="version", version="%(prog)s 0.1.1")
+    p.add_argument(
+        "--version",
+        action="version",
+        version="%(prog)s " + version("grebennikov-yandex-disk"),
+    )
     sub = p.add_subparsers(dest="action", required=True)
     form = sub.add_parser("connect", help="Открыть окно входа через Яндекс")
     form.add_argument("--client-id")
