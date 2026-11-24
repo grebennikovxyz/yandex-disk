@@ -1,3 +1,7 @@
-Yandex Disk plugin for Codex and ChatGPT
+Plaugin for Ya-Di — unofficial integration for Yandex Disk
 Copyright 2026 Антон Геннадьевич Гребенников
 Original project: https://github.com/grebennikovxyz/yandex-disk
+
+An unofficial AI plugin that works with Yandex Disk through its API. Yandex is a trademark of YANDEX LLC. The Yandex Disk service logo identifies the connected service. Yandex retains its trademark rights.
+Yandex Disk API terms: https://yandex.ru/legal/disk_api/ru/
+Source of the service logo: https://360.yandex.ru/brand/services/

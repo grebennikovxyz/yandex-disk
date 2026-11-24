@@ -1,4 +1,14 @@
-# Яндекс Диск для Codex и ChatGPT
+# Plaugin for Ya-Di
+
+<img src="plugins/yandex-disk/assets/yandex-disk-codex.png" width="96" height="96" alt="Сиреневое облако с тремя офисными файлами">
+
+Неофициальный ИИ-плагин для работы с Яндекс Диском из Codex и ChatGPT. Плагин использует API Яндекс Диска. Исключительное право на товарный знак «Яндекс» принадлежит ООО «ЯНДЕКС». [Условия API](https://yandex.ru/legal/disk_api/ru/)
+
+Подключаемый сервис
+
+<img src="src/ydisk_plugin/assets/yandex-disk-service.png" width="190" height="30" alt="Яндекс Диск">
+
+[Политика конфиденциальности](https://github.com/grebennikovxyz/yandex-disk/blob/main/PRIVACY.ru.md) · [Условия использования](https://github.com/grebennikovxyz/yandex-disk/blob/main/TERMS.ru.md)
 
 Плагин подключает личный Диск через Яндекс ID. Можно найти фразу внутри документа, обновить ячейку в таблице, создать презентацию, сохранить вложение чата или восстановить файл из корзины. Загрузка и обработка идут с вашего компьютера.
 
@@ -9,7 +19,7 @@
 Потребуются [uv](https://docs.astral.sh/uv/getting-started/installation/), Git и локальный клиент с поддержкой MCP. Выполните в пользовательском терминале:
 
 ```shell
-uv tool install --python 3.13 git+https://github.com/grebennikovxyz/yandex-disk.git@v0.1.2
+uv tool install --python 3.13 git+https://github.com/grebennikovxyz/yandex-disk.git@main
 uv tool update-shell
 ```
 
@@ -22,11 +32,11 @@ yandex-disk-plugin connect
 В Codex CLI добавьте каталог и установите плагин:
 
 ```shell
-codex plugin marketplace add https://github.com/grebennikovxyz/yandex-disk.git --ref v0.1.2
+codex plugin marketplace add https://github.com/grebennikovxyz/yandex-disk.git --ref main
 codex plugin add yandex-disk@grebennikov-plugins
 ```
 
-В ChatGPT Desktop выберите каталог GitHub в настройках плагинов и установите **Яндекс Диск** там, где клиент поддерживает локальные каталоги. ZIP из раздела Releases содержит переносимый плагин с корневым `plugin.json`. На компьютере должен запускаться `yandex-disk-plugin` из PATH. Если клиент не показывает новый инструмент, полностью перезапустите его и начните локальный чат. Для ручной настройки local MCP используйте команду `yandex-disk-plugin`, аргумент `serve`, транспорт stdio. [Документация OpenAI](https://developers.openai.com/plugins/build/plugins)
+В ChatGPT Desktop выберите каталог GitHub в настройках плагинов и установите **Plaugin for Ya-Di** там, где клиент поддерживает локальные каталоги. ZIP из раздела Releases содержит переносимый плагин с корневым `plugin.json`. На компьютере должен запускаться `yandex-disk-plugin` из PATH. Если клиент не показывает новый инструмент, полностью перезапустите его и начните локальный чат. Для ручной настройки local MCP используйте команду `yandex-disk-plugin`, аргумент `serve`, транспорт stdio. [Документация OpenAI](https://developers.openai.com/plugins/build/plugins)
 
 Для установки из скачанного релиза можно выполнить `uv tool install --python 3.13 <путь-к-wheel.whl>`. Пакет Python и ZIP берите из одного релиза. Пользовательский каталог GitHub и общий каталог OpenAI имеют разные процедуры распространения.
 

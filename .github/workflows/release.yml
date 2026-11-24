@@ -38,4 +38,4 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.whl dist/*.zip dist/SHA256SUMS.txt --verify-tag --prerelease --title "Яндекс Диск $GITHUB_REF_NAME" --notes "Предварительная версия. Инструкции по установке, доступу и ограничениям находятся в README. Автоматические проверки Windows и Linux пройдены."
+        run: gh release create "$GITHUB_REF_NAME" dist/*.whl dist/*.zip dist/SHA256SUMS.txt --verify-tag --prerelease --title "Plaugin for Ya-Di $GITHUB_REF_NAME" --notes "Неофициальный ИИ-плагин для работы с Яндекс Диском через API сервиса. Исключительное право на товарный знак «Яндекс» принадлежит ООО «ЯНДЕКС». Инструкции по установке, доступу и ограничениям находятся в README. Автоматические проверки Windows и Linux пройдены."

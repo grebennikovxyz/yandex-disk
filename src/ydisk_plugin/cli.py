@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 from importlib.metadata import version
+from pathlib import Path
 
 import httpx
 
@@ -12,6 +13,7 @@ from . import account, web
 from .account import Problem
 from .disk import Disk
 
+PRODUCT_NAME = "Plaugin for Ya-Di"
 GUIDE = "https://developers.openai.com/api/docs/guides/secure-mcp-tunnels"
 
 
@@ -20,15 +22,19 @@ def connect_window(client_id):
     from tkinter import messagebox
 
     root = tk.Tk()
-    root.title("Яндекс Диск для Codex и ChatGPT")
+    root.title(PRODUCT_NAME)
+    assets = Path(__file__).with_name("assets")
+    root.iconphoto(True, tk.PhotoImage(file=assets / "plaugin-window.png"))
     frame = tk.Frame(root, padx=24, pady=18)
     frame.pack()
-    tk.Label(frame, text="Подключить личный Яндекс Диск", font=("", 15)).pack(
+    tk.Label(frame, text=PRODUCT_NAME, font=("", 15)).pack(
         anchor="w"
     )
     tk.Label(
         frame,
-        text="Вход проходит на странице Яндекса. Токен хранится в системе.\n"
+        text="Неофициальный ИИ-плагин. Использует API Яндекс Диска.\n"
+        "Товарный знак «Яндекс» принадлежит ООО «ЯНДЕКС».\n\n"
+        "Вход проходит на странице Яндекса. Токен хранится в системе.\n"
         "OpenAI получает результаты, которые вы запрашиваете в чате.",
         justify="left",
     ).pack(pady=12, anchor="w")
@@ -53,10 +59,21 @@ def connect_window(client_id):
                 str(e) if isinstance(e, Problem) else "Не удалось завершить вход.",
             )
             return
-        messagebox.showinfo("Яндекс Диск", "Диск подключён.")
+        messagebox.showinfo(PRODUCT_NAME, "Диск подключён.")
         root.destroy()
 
-    tk.Button(frame, text="Войти через Яндекс", command=start).pack(pady=8)
+    service_logo = tk.PhotoImage(file=assets / "yandex-disk-service.png")
+    tk.Button(
+        frame,
+        text="Подключить через Яндекс ID",
+        image=service_logo,
+        compound="top",
+        bg="white",
+        fg="black",
+        padx=12,
+        pady=6,
+        command=start,
+    ).pack(pady=8)
     root.mainloop()
 
 
@@ -108,7 +125,11 @@ def main():
     # HTTPX includes full download URLs at INFO; protocol diagnostics must stay free of secrets.
     logging.disable(logging.CRITICAL)
     p = argparse.ArgumentParser(
-        prog="yandex-disk-plugin", description="Личный Яндекс Диск для Codex и ChatGPT"
+        prog="yandex-disk-plugin",
+        description=(
+            f"{PRODUCT_NAME} — неофициальный ИИ-плагин для работы с Яндекс Диском. "
+            "Исключительное право на товарный знак «Яндекс» принадлежит ООО «ЯНДЕКС»."
+        ),
     )
     p.add_argument(
         "--version",

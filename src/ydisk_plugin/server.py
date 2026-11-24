@@ -149,7 +149,7 @@ def make_server(tunnel=False):
         def register(f):
             annotations = types.ToolAnnotations(
                 readOnlyHint=f.__name__ not in WRITES
-                and f.__name__ != "complete_request",
+                and f.__name__ not in {"complete_request", "download_to_computer"},
                 destructiveHint=f.__name__ in DESTRUCTIVE
                 or f.__name__ == "complete_request",
                 openWorldHint=True,

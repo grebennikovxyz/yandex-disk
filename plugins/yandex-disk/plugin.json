@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "yandex-disk",
-  "version": "0.1.2",
-  "description": "Личный Яндекс Диск. Поиск, файлы, документы, таблицы и презентации.",
+  "version": "0.1.3",
+  "description": "Неофициальный ИИ-плагин для работы с Яндекс Диском через API сервиса.",
   "author": {
     "name": "Anton @grebennikov.xyz",
     "url": "https://github.com/grebennikovxyz/yandex-disk"
@@ -14,16 +14,22 @@
     "com.openai": {
       "requires_local_executor": true,
       "interface": {
-        "displayName": "Яндекс Диск",
+        "displayName": "Plaugin for Ya-Di",
         "logo": "./assets/yandex-disk-codex.png",
         "composerIcon": "./assets/yandex-disk-codex.png",
-        "shortDescription": "Файлы и офисные документы на вашем Диске",
+        "shortDescription": "Неофициальный файловый плагин",
         "developerName": "Anton @grebennikov.xyz",
         "category": "Productivity",
         "defaultPrompt": [
           "Найди документ по фразе внутри",
           "Обнови ячейку в таблице на Диске"
-        ]
+        ],
+        "longDescription": "Неофициальный ИИ-плагин для работы с Яндекс Диском через API сервиса. Исключительное право на товарный знак «Яндекс» принадлежит ООО «ЯНДЕКС». Находит документы, редактирует таблицы и сохраняет новую версию файла рядом с исходником.",
+        "privacyPolicyURL": "https://github.com/grebennikovxyz/yandex-disk/blob/main/PRIVACY.ru.md",
+        "termsOfServiceURL": "https://github.com/grebennikovxyz/yandex-disk/blob/main/TERMS.ru.md",
+        "websiteURL": "https://github.com/grebennikovxyz/yandex-disk",
+        "supportURL": "https://github.com/grebennikovxyz/yandex-disk/issues",
+        "brandColor": "#80539C"
       }
     }
   }

@@ -32,7 +32,12 @@ with ZipFile(zip_path, "w", ZIP_DEFLATED) as z:
         plugin / "skills/yandex-disk/SKILL.md",
     ]:
         z.write(path, path.relative_to(plugin).as_posix())
-    for name in ["LICENSE", "NOTICE", "README.md"]:
+    service_logo = Path("src/ydisk_plugin/assets/yandex-disk-service.png")
+    z.write(root / service_logo, service_logo.as_posix())
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    readme = readme.replace('src="plugins/yandex-disk/assets/', 'src="assets/')
+    z.writestr("README.md", readme)
+    for name in ["LICENSE", "NOTICE", "PRIVACY.ru.md", "TERMS.ru.md"]:
         z.write(root / name, name)
 artifacts = [zip_path, wheel]
 if args.windows_x64:

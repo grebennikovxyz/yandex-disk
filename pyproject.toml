@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "grebennikov-yandex-disk"
-version = "0.1.2"
-description = "Personal Yandex Disk plugin for Codex and ChatGPT"
+version = "0.1.3"
+description = "Plaugin for Ya-Di — unofficial Yandex Disk integration for Codex and ChatGPT"
 readme = "README.md"
 requires-python = ">=3.13"
 license = "Apache-2.0"
