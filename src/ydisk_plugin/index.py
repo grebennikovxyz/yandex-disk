@@ -9,7 +9,7 @@ from lxml.etree import XMLSyntaxError
 from pypdf.errors import PdfReadError
 
 from .account import Problem, private_directory
-from .disk import CONTENT_LIMIT, path_of
+from .disk import CONTENT_LIMIT, disk_url, path_of
 from .office import MAX_TEXT, SUPPORTED, extension, records
 
 
@@ -102,3 +102,24 @@ def matches(account, query, limit):
             (expression, limit),
         ).fetchall()
     return rows, json.loads(config[0]) if config else [], config[1] if config else None
+
+
+def cached_page(account, path, offset):
+    path = path_of(path)
+    size = 24000
+    with closing(db(account)) as con:
+        row = con.execute(
+            "SELECT substr(body, ?, ?), length(body) FROM docs WHERE path = ?",
+            (offset + 1, size, path),
+        ).fetchone()
+        if row is None:
+            raise Problem("Документа нет в локальном индексе этого Диска.")
+        updated = con.execute("SELECT updated FROM settings").fetchone()
+    return {
+        "id": "disk:" + path,
+        "url": disk_url(path),
+        "text": row[0],
+        "offline": True,
+        "indexed_at": updated[0] if updated else None,
+        "next_offset": offset + size if offset + size < row[1] else None,
+    }

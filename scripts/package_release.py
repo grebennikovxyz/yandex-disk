@@ -40,6 +40,11 @@ with ZipFile(zip_path, "w", ZIP_DEFLATED) as z:
     for name in ["LICENSE", "NOTICE", "PRIVACY.ru.md", "TERMS.ru.md"]:
         z.write(root / name, name)
 artifacts = [zip_path, wheel]
+skill_zip = out / f"openclaw-yandex-disk-{version}.zip"
+with ZipFile(skill_zip, "w", ZIP_DEFLATED) as z:
+    for name in ("SKILL.md", "LICENSE.md"):
+        z.write(root / "openclaw/skills/yandex-disk" / name, f"yandex-disk/{name}")
+artifacts.append(skill_zip)
 if args.windows_x64:
     if sys.platform != "win32":
         raise SystemExit("Build the Windows package on Windows x64.")

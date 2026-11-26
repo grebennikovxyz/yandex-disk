@@ -5,3 +5,6 @@ Original project: https://github.com/grebennikovxyz/yandex-disk
 An unofficial AI plugin that works with Yandex Disk through its API. Yandex is a trademark of YANDEX LLC. The Yandex Disk service logo identifies the connected service. Yandex retains its trademark rights.
 Yandex Disk API terms: https://yandex.ru/legal/disk_api/ru/
 Source of the service logo: https://360.yandex.ru/brand/services/
+
+Optional local engine (installed separately): @wirecat/yandex-disk-cli, Apache-2.0.
+Source: https://github.com/WireCatLabs/ydisk-cli

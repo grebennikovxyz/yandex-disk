@@ -10,7 +10,7 @@ import shutil
 import sys
 import time
 import webbrowser
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlsplit
@@ -49,6 +49,7 @@ class Account:
     writable: bool
     profile: str
     expires: float
+    login: str = ""
 
     @property
     def directory(self):
@@ -64,24 +65,204 @@ def account_lock():
     return FileLock(private_directory(DATA) / "account.lock", timeout=30)
 
 
+class Accounts:
+    """Local routing metadata. Callers hold account_lock for the entire operation."""
+
+    def __init__(self):
+        self.file = private_directory(DATA) / "accounts.json"
+        self.keys = vault()
+        if self.file.exists():
+            self.data = json.loads(self.file.read_bytes())
+        else:
+            self.data = {"profiles": {}, "projects": {}, "default": None, "web": None}
+        self.profiles = self.data["profiles"]
+        legacy = self.keys.get_password(SERVICE, "active")
+        if legacy:
+            owner = Account(**json.loads(legacy))
+            if owner.profile not in self.profiles or not self.keys.get_password(
+                f"{SERVICE}.{owner.profile}", "account"
+            ):
+                self.add(owner)
+            self.keys.delete_password(SERVICE, "active")
+
+    def save(self):
+        tmp = self.file.with_suffix(".tmp")
+        tmp.write_text(json.dumps(self.data, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(self.file)
+
+    def lookup(self, selector):
+        if isinstance(selector, str):
+            for key, info in self.profiles.items():
+                if (
+                    key == selector
+                    or info["alias"].casefold() == selector.strip().casefold()
+                ):
+                    return key
+        raise Problem("Диск не найден. Посмотрите доступные имена в accounts.")
+
+    def unique_name(self, name, key):
+        name = name.strip()
+        if (
+            not name
+            or len(name) > 100
+            or not name.isprintable()
+            or re.fullmatch("[0-9a-fA-F]{32}", name)
+        ):
+            raise Problem("Укажите читаемое имя Диска длиной до 100 символов.")
+        if any(
+            k != key and p["alias"].casefold() == name.casefold()
+            for k, p in self.profiles.items()
+        ):
+            raise Problem("Это имя уже занято другим Диском.")
+        return name
+
+    def add(self, owner, alias=None):
+        key = next(
+            (k for k, p in self.profiles.items() if p["uid"] == owner.uid),
+            owner.profile,
+        )
+        if not re.fullmatch("[0-9a-f]{32}", key):
+            raise Problem("Некорректный идентификатор локального профиля.")
+        previous = self.profiles.get(key, {})
+        name = (
+            alias
+            if alias is not None
+            else previous.get("alias") or owner.login or owner.name or owner.uid
+        )
+        if (
+            alias is None
+            and not previous
+            and any(
+                p["alias"].casefold() == name.casefold() for p in self.profiles.values()
+            )
+        ):
+            name = f"{name} ({owner.uid})"
+        name = self.unique_name(name, key)
+        owner = replace(owner, profile=key)
+        self.profiles[key] = {"alias": name, "uid": owner.uid}
+        if not self.data["default"]:
+            self.data["default"] = key
+        if not self.data["web"]:
+            self.data["web"] = key
+        # Reserve the ID first. A failed vault write can then be retried by UID.
+        self.save()
+        self.keys.set_password(f"{SERVICE}.{key}", "account", json.dumps(asdict(owner)))
+        return key
+
+    def bound(self, project):
+        path = Path(project).resolve()
+        for parent in (path, *path.parents):
+            key = self.data["projects"].get(os.path.normcase(str(parent)))
+            if key:
+                return key
+        return None
+
+    def binding(self, project, key):
+        path = Path(project).resolve()
+        if not path.is_dir():
+            raise Problem("Для привязки нужна папка проекта.")
+        location = os.path.normcase(str(path))
+        if key:
+            self.data["projects"][location] = key
+        elif self.data["projects"].pop(location, None) is None:
+            raise Problem("У этой папки нет собственной привязки.")
+        self.save()
+
+    def use(self, key):
+        self.read(key)
+        self.data["default"] = key
+        self.save()
+
+    def select(self, selector=None, *, project=None, pin=None, explicit=False):
+        bound = self.bound(project) if project is not None else None
+        if bound and bound not in self.profiles:
+            raise Problem(
+                "Диск проекта отключён. Обновите привязку командой bind или unbind."
+            )
+        if pin and pin not in self.profiles:
+            raise Problem("Закреплённый Диск отключён. Настройте подключение заново.")
+        if bound and pin and bound != pin:
+            raise Problem("У сервера и проекта закреплены разные Диски.")
+        fixed = bound or pin
+        if selector is not None:
+            key = self.lookup(selector)
+            if fixed and key != fixed:
+                raise Problem("Для этого подключения закреплён другой Диск.")
+            return key
+        if not fixed and explicit and len(self.profiles) > 1:
+            raise Problem(
+                "Подключено несколько Дисков. Вызовите list_accounts и передайте account в запросе."
+            )
+        key = fixed or self.data["default"]
+        if not key and len(self.profiles) == 1:
+            key = next(iter(self.profiles))
+        if not key:
+            raise Problem("Выберите Диск через use или подключите его через login.")
+        return key
+
+    def read(self, key, *, allow_expired=False):
+        record = self.keys.get_password(f"{SERVICE}.{key}", "account")
+        if not record:
+            raise Problem("Для этого Диска нужен повторный вход через login.")
+        owner = Account(**json.loads(record))
+        if owner.profile != key or owner.uid != self.profiles[key]["uid"]:
+            raise Problem("Владелец сохранённого входа не совпадает с профилем.")
+        if not allow_expired and owner.expires and time.time() >= owner.expires:
+            raise Problem("Срок входа истёк. Повторите login для этого аккаунта.")
+        return owner
+
+    def describe(self, key):
+        try:
+            owner = self.read(key, allow_expired=True)
+        except Problem:
+            return {
+                "id": key,
+                **self.profiles[key],
+                "owner": "",
+                "login": "",
+                "writable": None,
+                "expired": True,
+                "default": key == self.data["default"],
+            }
+        return {
+            "id": key,
+            "alias": self.profiles[key]["alias"],
+            "owner": owner.name,
+            "login": owner.login,
+            "uid": owner.uid,
+            "writable": owner.writable,
+            "expired": bool(owner.expires and time.time() >= owner.expires),
+            "default": key == self.data["default"],
+        }
+
+    def remove(self, key):
+        if key not in self.profiles or not re.fullmatch("[0-9a-f]{32}", key):
+            raise Problem("Диск не найден.")
+        if self.keys.get_password(f"{SERVICE}.{key}", "account"):
+            self.keys.delete_password(f"{SERVICE}.{key}", "account")
+        folder = DATA / key
+        if folder.exists():
+            shutil.rmtree(folder)
+        del self.profiles[key]
+        if self.data["default"] == key:
+            self.data["default"] = (
+                next(iter(self.profiles)) if len(self.profiles) == 1 else None
+            )
+        # Retain project and tunnel pins. Removing a profile must never redirect them.
+        self.save()
+
+
 def current():
-    record = vault().get_password(SERVICE, "active")
-    if not record:
-        raise Problem("Сначала выполните yandex-disk-plugin login на своём компьютере.")
-    account = Account(**json.loads(record))
-    if account.expires and time.time() >= account.expires:
-        raise Problem("Срок входа истёк. Повторите yandex-disk-plugin login.")
-    return account
+    with account_lock():
+        accounts = Accounts()
+        return accounts.read(accounts.select(project=Path.cwd()))
 
 
 def clear():
-    keyring = vault()
-    record = keyring.get_password(SERVICE, "active")
-    if record:
-        account = Account(**json.loads(record))
-        keyring.delete_password(SERVICE, "active")
-        if account.directory.exists():
-            shutil.rmtree(account.directory)
+    with account_lock():
+        accounts = Accounts()
+        if accounts.profiles:
+            accounts.remove(accounts.select(project=Path.cwd()))
 
 
 def authorization_code(client_id, scopes, verifier, manual, *, timeout=600):
@@ -167,7 +348,7 @@ def authorization_code(client_id, scopes, verifier, manual, *, timeout=600):
     return outcome["code"]
 
 
-def login(client_id, read_only=False, manual=False):
+def login(client_id, read_only=False, manual=False, alias=None):
     from .disk import Disk
 
     client_id = client_id or os.getenv("YANDEX_DISK_CLIENT_ID") or PUBLIC_CLIENT_ID
@@ -222,13 +403,27 @@ def login(client_id, read_only=False, manual=False):
         writable,
         secrets.token_hex(16),
         time.time() + lifetime if lifetime else 0,
+        user.get("login") or "",
     )
     with account_lock():
-        clear()
-        vault().set_password(SERVICE, "active", json.dumps(asdict(account)))
+        accounts = Accounts()
+        if alias is not None:
+            existing = next(
+                (p for p in accounts.profiles.values() if p["uid"] == account.uid), None
+            )
+            if existing and existing["alias"].casefold() != alias.strip().casefold():
+                raise Problem(
+                    f"Яндекс вернул уже подключённый Диск «{existing['alias']}». "
+                    "Выберите другую учётную запись у Яндекса или используйте rename для смены названия."
+                )
+        key = accounts.add(account, alias)
+        name = accounts.profiles[key]["alias"]
     print(
         "Подключён Диск:",
-        account.name,
+        name,
+        "·",
+        account.login or account.name,
         "·",
         "чтение и запись" if writable else "чтение",
     )
+    return name

@@ -1,0 +1,13 @@
+{
+  "name": "yandex-disk",
+  "version": "0.3.0",
+  "description": "Поиск, чтение и правка файлов на личном Яндекс Диске через локальный MCP-сервер.",
+  "author": {
+    "name": "Anton @grebennikov.xyz",
+    "url": "https://github.com/grebennikovxyz"
+  },
+  "homepage": "https://github.com/grebennikovxyz/yandex-disk",
+  "repository": "https://github.com/grebennikovxyz/yandex-disk",
+  "license": "Apache-2.0",
+  "mcpServers": "./mcp.json"
+}

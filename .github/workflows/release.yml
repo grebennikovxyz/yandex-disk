@@ -4,6 +4,7 @@ on:
     branches: [main]
     tags: ["v*"]
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -18,11 +19,52 @@ jobs:
         with:
           python-version: "3.13"
       - run: python -m pip install . pytest
+      - run: python scripts/marketplaces.py
       - run: python -m pytest -q
-  release:
-    if: startsWith(github.ref, 'refs/tags/v')
+  plan:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      publish: ${{ steps.plan.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - id: plan
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="v$(python scripts/marketplaces.py)"
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            python scripts/marketplaces.py --tag "$GITHUB_REF_NAME"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if git show-ref --quiet --verify "refs/tags/$tag"; then
+            if ! git diff --quiet "$tag" HEAD -- src plugins openclaw .agents/plugins .claude-plugin pyproject.toml; then
+              echo "::error::Published files changed. Bump pyproject.toml and run python scripts/marketplaces.py --sync."
+              exit 1
+            fi
+          fi
+          if draft=$(gh release view "$tag" --json isDraft --jq .isDraft 2>release-error); then
+            echo "publish=$draft" >> "$GITHUB_OUTPUT"
+          elif grep -Eiq 'release not found|HTTP 404' release-error; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            cat release-error >&2
+            exit 1
+          fi
+  release:
+    if: needs.plan.outputs.publish == 'true'
+    needs: plan
     runs-on: windows-latest
+    concurrency: release-${{ needs.plan.outputs.tag }}
     permissions:
       contents: write
     steps:
@@ -34,8 +76,58 @@ jobs:
       - run: python -m build --wheel
       - run: python scripts/package_release.py --windows-x64
       - run: python tests/windows_package.py
-      - name: Publish preview with verified artifacts
+      - name: Publish verified plugin packages and OpenClaw skill
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.whl dist/*.zip dist/SHA256SUMS.txt --verify-tag --prerelease --title "Plaugin for Ya-Di $GITHUB_REF_NAME" --notes "Неофициальный ИИ-плагин для работы с Яндекс Диском через API сервиса. Исключительное право на товарный знак «Яндекс» принадлежит ООО «ЯНДЕКС». Инструкции по установке, доступу и ограничениям находятся в README. Автоматические проверки Windows и Linux пройдены."
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$TAG" --json isDraft > /dev/null; then
+            gh release create "$TAG" --draft --prerelease --target "$GITHUB_SHA" --title "Plaugin for Ya-Di $TAG" --generate-notes
+          fi
+          if [[ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" == true ]]; then
+            gh release upload "$TAG" dist/*.whl dist/*.zip dist/SHA256SUMS.txt --clobber
+            gh release edit "$TAG" --draft=false
+          fi
+  clawhub:
+    needs: [plan, release]
+    if: >-
+      always() && !cancelled() && needs.plan.result == 'success' &&
+      (needs.release.result == 'success' ||
+      (needs.release.result == 'skipped' && github.event_name == 'workflow_dispatch'))
+    runs-on: ubuntu-latest
+    concurrency: clawhub-${{ needs.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install registry CLI
+        run: npm install --prefix "$RUNNER_TEMP/clawhub-cli" --ignore-scripts --no-audit --no-fund clawhub@0.27.0
+      - name: Publish the standalone MIT-0 skill
+        env:
+          CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$CLAWHUB_TOKEN" ]]; then
+            echo "::error::Add the publisher's CLAWHUB_TOKEN repository secret, then rerun this job."
+            exit 1
+          fi
+          export CLAWHUB_CONFIG_PATH="$RUNNER_TEMP/clawhub-auth.json"
+          trap 'rm -f "$CLAWHUB_CONFIG_PATH"' EXIT
+          node -e 'require("node:fs").writeFileSync(process.env.CLAWHUB_CONFIG_PATH, JSON.stringify({registry:"https://clawhub.ai",token:process.env.CLAWHUB_TOKEN}), {mode:0o600})'
+          unset CLAWHUB_TOKEN
+          cli="$RUNNER_TEMP/clawhub-cli/node_modules/.bin/clawhub"
+          args=(skill publish openclaw/skills/yandex-disk --owner grebennikovxyz --slug yandex-disk --name "Yandex Disk" --no-input --json)
+          version="${TAG#v}"
+          plan=$("$cli" "${args[@]}" --dry-run)
+          if jq -e --arg version "$version" '.status == "unchanged" and .version == $version' <<< "$plan" >/dev/null; then
+            echo "ClawHub already has the same skill at $TAG."
+          else
+            "$cli" "${args[@]}" --version "$version" --changelog "https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
+          fi

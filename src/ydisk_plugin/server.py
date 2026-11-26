@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import io
 import json
@@ -16,13 +17,14 @@ from platformdirs import user_downloads_path
 from pydantic import Field
 from typing_extensions import TypedDict as FileDict
 
-from . import index, snapshot, web
-from .account import Problem, account_lock, current, private_directory
+from . import advanced, index, snapshot, web
+from .account import Accounts, Problem, account_lock, private_directory
 from .disk import CONTENT_LIMIT, OPENAI_FILES, Disk, disk_url, new_version_path, path_of
 from .office import Edit, OfficeContent, apply_edits, create, extension, records
 
 SESSION = ContextVar("disk_session")
 WRITES = {
+    "advanced_write",
     "manage_file",
     "create_office",
     "edit_office",
@@ -32,7 +34,7 @@ WRITES = {
     "publish_link",
     "remove_public_link",
 }
-DESTRUCTIVE = {"manage_file", "publish_link", "remove_public_link"}
+DESTRUCTIVE = {"manage_file", "publish_link", "remove_public_link", "advanced_write"}
 Offset = Annotated[int, Field(ge=0)]
 Limit = Annotated[int, Field(ge=1, le=100)]
 
@@ -99,14 +101,108 @@ def transfer_file(name):
 
 
 class PersonalServer(FastMCP):
-    def __init__(self, tunnel):
+    def __init__(self, tunnel, project, pin):
         self.tunnel = tunnel
+        self.project = None if tunnel else Path(project or Path.cwd()).resolve()
+        self.discover_project = not tunnel and project is None
+        self.pin = pin
+        self.call_lock = asyncio.Lock()
         super().__init__("yandex-disk", log_level="ERROR")
 
-    async def call_tool(self, name, arguments):
+    async def client_projects(self):
+        if not self.discover_project:
+            return []
         try:
+            session = self.get_context().request_context.session
+        except ValueError:  # In-process calls have no MCP client.
+            return []
+        if not session.check_client_capability(
+            types.ClientCapabilities(roots=types.RootsCapability())
+        ):
+            return []
+        try:
+            async with asyncio.timeout(5):
+                roots = (await session.list_roots()).roots
+            if any(root.uri.host not in (None, "", "localhost") for root in roots):
+                raise ValueError("remote root")
+            return [Path.from_uri(str(root.uri)) for root in roots]
+        except Exception as exc:
+            raise Problem(
+                "Не удалось определить проект MCP. Укажите папку через serve --project."
+            ) from exc
+
+    async def list_tools(self):
+        tools = await super().list_tools()
+        if not self.tunnel:
+            for tool in tools:
+                if tool.name != "list_accounts":
+                    tool.inputSchema = {
+                        **tool.inputSchema,
+                        "properties": {
+                            **tool.inputSchema.get("properties", {}),
+                            "account": {
+                                "type": "string",
+                                "description": "Disk profile ID from list_accounts. Use the same ID on every call for this chat.",
+                            },
+                        },
+                    }
+        return tools
+
+    async def call_tool(self, name, arguments):
+        # Cooperate with other stdio requests while a child MCP server is running.
+        async with self.call_lock:
+            return await self.dispatch(name, arguments)
+
+    async def dispatch(self, name, arguments):
+        try:
+            roots = await self.client_projects()
             with account_lock():
-                account = current()
+                accounts = Accounts()
+                project = self.project
+                if roots:
+                    bindings = {accounts.bound(path) for path in roots}
+                    if len(bindings) != 1:
+                        raise Problem(
+                            "У папок клиента разные привязки. Выберите проект через serve --project."
+                        )
+                    client_pin = bindings.pop()
+                    launch_pin = accounts.bound(self.project)
+                    if client_pin and launch_pin and client_pin != launch_pin:
+                        raise Problem(
+                            "Диски папки запуска и проекта различаются. Укажите serve --project."
+                        )
+                    if client_pin:
+                        project = roots[0]
+                arguments = dict(arguments or {})
+                if name == "list_accounts" and not self.tunnel:
+                    fixed = self.pin or accounts.bound(project)
+                    keys = (
+                        [accounts.select(project=project, pin=self.pin)]
+                        if fixed
+                        else accounts.profiles
+                    )
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {
+                                    "accounts": [accounts.describe(k) for k in keys],
+                                    "pinned": bool(fixed),
+                                },
+                                ensure_ascii=False,
+                            ),
+                        )
+                    ]
+                if self.tunnel and ("account" in arguments or name == "list_accounts"):
+                    raise Problem("Туннель обслуживает только закреплённый Диск.")
+                pin = self.pin or (accounts.data["web"] if self.tunnel else None)
+                key = accounts.select(
+                    arguments.pop("account", None),
+                    project=project,
+                    pin=pin,
+                    explicit=not self.tunnel,
+                )
+                account = accounts.read(key)
                 if self.tunnel:
                     if name == "complete_request":
                         name, arguments = web.consume(account, arguments["ticket"])
@@ -142,14 +238,15 @@ class PersonalServer(FastMCP):
             ) from None
 
 
-def make_server(tunnel=False):
-    server = PersonalServer(tunnel)
+def make_server(tunnel=False, *, project=None, pin=None):
+    server = PersonalServer(tunnel, project, pin)
 
     def tool(fn=None, *, meta=None):
         def register(f):
             annotations = types.ToolAnnotations(
                 readOnlyHint=f.__name__ not in WRITES
-                and f.__name__ not in {"complete_request", "download_to_computer"},
+                and f.__name__
+                not in {"complete_request", "download_to_computer", "sync_library"},
                 destructiveHint=f.__name__ in DESTRUCTIVE
                 or f.__name__ == "complete_request",
                 openWorldHint=True,
@@ -166,6 +263,7 @@ def make_server(tunnel=False):
         account, disk = SESSION.get()
         info = disk.api("GET", "", fields="user,total_space,used_space")
         return {
+            "account_id": account.profile,
             "user": info.get("user"),
             "writable": account.writable,
             "total": info.get("total_space"),
@@ -201,7 +299,7 @@ def make_server(tunnel=False):
         return public_record(SESSION.get()[1].meta(path))
 
     @tool
-    def search(query: str, limit: Limit = 20):
+    def search(query: str, limit: Limit = 20, offline: bool = False):
         """Find files by filename on Disk and by words in locally indexed folders."""
         account, disk = SESSION.get()
         if not query.strip() or len(query) > 400:
@@ -209,6 +307,14 @@ def make_server(tunnel=False):
         rows, roots, timestamp = index.matches(account, query, limit)
         hits = {}
         for path, sha, excerpt in rows:
+            if offline:
+                hits[path] = ref(
+                    path,
+                    title=path.rsplit("/", 1)[-1],
+                    snippet=excerpt,
+                    matched="cached_content",
+                )
+                continue
             try:
                 item = disk.meta(path)
             except Problem as e:
@@ -219,7 +325,7 @@ def make_server(tunnel=False):
                 hits[path] = ref(
                     path, title=item["name"], snippet=excerpt, matched="content"
                 )
-        if len(hits) < limit:
+        if not offline and len(hits) < limit:
             for item in disk.files("/"):
                 path = path_of(item["path"])
                 if query.casefold() in item["name"].casefold() and path not in hits:
@@ -230,11 +336,14 @@ def make_server(tunnel=False):
             "results": list(hits.values()),
             "content_folders": roots,
             "indexed_at": timestamp,
+            "offline": offline,
         }
 
     @tool
-    def fetch(id: str, offset: Offset = 0):
+    def fetch(id: str, offset: Offset = 0, offline: bool = False):
         """Read text of a search result; offset is a character offset. Includes the private source URL."""
+        if offline:
+            return index.cached_page(SESSION.get()[0], id, offset)
         content, sha = get_bytes(id, remember=True)
         remaining = offset
         chunks = []
@@ -259,6 +368,31 @@ def make_server(tunnel=False):
             sha256=sha,
             next_offset=offset + used if more else None,
         )
+
+    @tool
+    async def advanced_commands(command: str = ""):
+        """List optional local engine operations, or return the named operation's argument schema."""
+        return await advanced.run(SESSION.get()[0], "commands", command, {})
+
+    @tool
+    async def advanced_read(command: str, parameters: dict | None = None):
+        """Read the extended library, change log, versions, Office ranges, mirrors or named Disk API."""
+        return await advanced.run(SESSION.get()[0], "read", command, parameters or {})
+
+    @tool
+    async def advanced_preview(command: str, parameters: dict):
+        """Validate and show a prospective write without executing it. For a mirror plan use mirrors preview."""
+        return await advanced.run(SESSION.get()[0], "preview", command, parameters)
+
+    @tool
+    async def advanced_write(command: str, parameters: dict):
+        """Edit or restore an original at its fingerprint, sync an owner's mirror, resolve conflicts or run a named Disk write."""
+        return await advanced.run(SESSION.get()[0], "write", command, parameters)
+
+    @tool
+    async def sync_library():
+        """Refresh the local versioned library from owner-selected folders. Repeat while meta.complete is false."""
+        return await advanced.run(SESSION.get()[0], "sync", "sync", {})
 
     @tool
     def read_office(path: str, offset: Offset = 0, limit: Limit = 50):
@@ -397,6 +531,12 @@ def make_server(tunnel=False):
         return types.EmbeddedResource(type="resource", resource=resource)
 
     if not tunnel:
+
+        @tool
+        def list_accounts():
+            """Show available Disk profiles, owners and access before choosing a Disk in this chat."""
+            # Dispatched before opening a Disk session, including when there are no accounts.
+            raise Problem("Список Дисков запрашивается до подключения.")
 
         @tool
         def download_to_computer(path: str, filename: str):

@@ -1,6 +1,6 @@
 {
   "name": "yandex-disk",
-  "version": "0.1.3",
+  "version": "0.3.0",
   "description": "Неофициальный ИИ-плагин для работы с Яндекс Диском через API сервиса.",
   "author": {
     "name": "Anton @grebennikov.xyz",

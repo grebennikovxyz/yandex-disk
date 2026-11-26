@@ -36,9 +36,48 @@ def stage(account, tool, args):
     code = secrets.token_hex(5).upper()
     # The ticket holds the decryption key. Only its digest is persisted locally.
     preview = {"tool": tool}
-    for k in ("path", "id", "destination", "action", "query", "reason", "filename"):
+    for k in (
+        "path",
+        "id",
+        "destination",
+        "action",
+        "query",
+        "reason",
+        "filename",
+        "command",
+    ):
         if k in args and isinstance(args[k], str):
             preview[k] = args[k][:300]
+    if isinstance(args.get("parameters"), dict):
+        params = args["parameters"]
+        if len(params) > 50 or any(len(k) > 80 for k in params):
+            raise Problem("Слишком много параметров или слишком длинное имя параметра.")
+        preview["parameters"] = {
+            k: v
+            if isinstance(v, (bool, int))
+            or (
+                k
+                in {
+                    "path",
+                    "file",
+                    "folder",
+                    "from",
+                    "id",
+                    "keep",
+                    "range",
+                    "version",
+                    "expected_fingerprint",
+                }
+                and isinstance(v, str)
+                and len(v) <= 300
+            )
+            else {
+                "sha256": hashlib.sha256(
+                    json.dumps(v, ensure_ascii=False).encode()
+                ).hexdigest()
+            }
+            for k, v in params.items()
+        }
     if "edits" in args:
         preview["targets"] = [
             str(e.get("target", ""))[:80]
