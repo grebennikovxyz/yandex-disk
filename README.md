@@ -22,37 +22,54 @@
 
 Автор — **Anton @grebennikov.xyz**. [Проект на GitHub](https://github.com/grebennikovxyz/yandex-disk)
 
-## Установка для Codex и ChatGPT Desktop
+## Установка из репозиториев
 
-Потребуются [uv](https://docs.astral.sh/uv/getting-started/installation/), Git и локальный клиент с поддержкой MCP. Выполните в пользовательском терминале:
+Codex, ChatGPT Desktop и Claude Code используют каталог `grebennikov-plugins` из репозитория GitHub. Для OpenClaw навык опубликован в ClawHub под именем `@grebennikovxyz/yandex-disk`. [Репозиторий GitHub](https://github.com/grebennikovxyz/yandex-disk) · [Карточка в ClawHub](https://clawhub.ai/grebennikovxyz/skills/yandex-disk)
+
+Сначала подключите Яндекс Диск на своём компьютере, затем выберите инструкцию для своего клиента. [Codex](#codex) · [ChatGPT Desktop](#chatgpt-desktop) · [Claude Code](#claude-code) · [OpenClaw](#openclaw) · [ChatGPT в браузере](#chatgpt-в-браузере)
+
+### Общий шаг — локальный сервер и вход в Яндекс
+
+На компьютере, где будет работать MCP-сервер, установите Git и uv. В терминале выполните следующие команды. [Установка uv](https://docs.astral.sh/uv/getting-started/installation/)
 
 ```shell
 uv tool install --python 3.13 git+https://github.com/grebennikovxyz/yandex-disk.git@main
 uv tool update-shell
 ```
 
-Откройте новый терминал. Команда ниже открывает окно **«Войти через Яндекс»**. Выберите обычный доступ или «Только чтение». Для терминала без Tk используйте `yandex-disk-plugin login` или `yandex-disk-plugin login --read-only`.
+Откройте новый терминал, войдите через Яндекс и проверьте, какой Диск подключён. В окне входа можно выбрать доступ только для чтения.
 
 ```shell
 yandex-disk-plugin connect
+yandex-disk-plugin status
 ```
 
-В Codex CLI добавьте каталог и установите плагин:
+В терминале без графического интерфейса используйте `yandex-disk-plugin login` или `yandex-disk-plugin login --read-only`. Один локальный сервер может обслуживать несколько клиентов. Для обновления сервера, установленного из ветки `main`, выполните `uv tool upgrade grebennikov-yandex-disk`.
+
+### Codex
+
+Добавьте GitHub-репозиторий в каталоги Codex и установите из него плагин.
 
 ```shell
 codex plugin marketplace add https://github.com/grebennikovxyz/yandex-disk.git --ref main
 codex plugin add yandex-disk@grebennikov-plugins
 ```
 
-В ChatGPT Desktop выберите каталог GitHub в настройках плагинов и установите **Plaugin for Ya-Di** там, где клиент поддерживает локальные каталоги. ZIP из раздела Releases содержит переносимый плагин с корневым `plugin.json`. На компьютере должен запускаться `yandex-disk-plugin` из PATH. Если клиент не показывает новый инструмент, полностью перезапустите его и начните локальный чат. Для ручной настройки local MCP используйте команду `yandex-disk-plugin`, аргумент `serve`, транспорт stdio. [Документация OpenAI](https://developers.openai.com/plugins/build/plugins)
+Откройте новый чат и попросите «Покажи доступные Диски». Для обновления выполните `codex plugin marketplace upgrade grebennikov-plugins`, затем повторите `codex plugin add yandex-disk@grebennikov-plugins`.
 
-Для установки из скачанного релиза можно выполнить `uv tool install --python 3.13 <путь-к-wheel.whl>`. Пакет Python и ZIP берите из одного релиза. Пользовательский каталог GitHub и общий каталог OpenAI имеют разные процедуры распространения.
+### ChatGPT Desktop
 
-Для Windows x64 также собирается ZIP с окончанием `-windows-x64.zip`. В него входят Python, MCP-сервер и библиотеки. В клиенте с импортом локальных плагинов выберите этот ZIP. Для входа в Яндекс запустите `connect.cmd` из распакованного архива. Чтобы проверить подключение из PowerShell в этой папке, выполните `.\runtime\python.exe -I -m ydisk_plugin.cli status`. [Релизы для скачивания](https://github.com/grebennikovxyz/yandex-disk/releases)
+Если каталог уже добавлен через Codex CLI в том же профиле, переходите к выбору плагина. Чтобы открыть каталог непосредственно из репозитория, скачайте его и откройте папку `yandex-disk` как рабочий проект в ChatGPT Desktop.
 
-## Claude Code
+```shell
+git clone https://github.com/grebennikovxyz/yandex-disk.git
+```
 
-Установите локальную команду `yandex-disk-plugin` и войдите в Яндекс по инструкции выше. Затем добавьте каталог и установите плагин:
+Перезапустите ChatGPT Desktop. В режиме **Work** или **Codex** откройте **Plugins Directory**, выберите каталог **Grebennikov Plugins** и установите **Plaugin for Ya-Di**. Для обновления клона выполните `git pull --ff-only` в папке `yandex-disk` и снова откройте каталог в приложении. Если подключали каталог через Codex CLI, используйте `codex plugin marketplace upgrade grebennikov-plugins`. При ручной настройке локального MCP укажите команду `yandex-disk-plugin`, аргумент `serve` и транспорт `stdio`. [Документация OpenAI](https://developers.openai.com/plugins/build/plugins)
+
+### Claude Code
+
+Добавьте тот же GitHub-репозиторий в каталог Claude Code и установите плагин.
 
 ```shell
 claude plugin marketplace add grebennikovxyz/yandex-disk
@@ -61,24 +78,31 @@ claude plugin install yandex-disk@grebennikov-plugins
 
 Откройте новый сеанс Claude Code и попросите «Покажи доступные Диски». Команды `claude plugin marketplace update grebennikov-plugins` и `claude plugin update yandex-disk@grebennikov-plugins` получают изменения каталога и плагина. [Каталоги Claude Code](https://code.claude.com/docs/ru/plugins/create-marketplace)
 
-## OpenClaw
+### OpenClaw
 
-Установите локальный сервер и выполните вход на компьютере владельца, где работает личный OpenClaw. Подключите сервер по stdio и проверьте список его инструментов:
+В терминале личного OpenClaw установите навык из ClawHub, подключите локальный сервер и проверьте соединение.
 
 ```shell
+openclaw skills install @grebennikovxyz/yandex-disk
 openclaw mcp add yandex-disk --command yandex-disk-plugin --arg serve
 openclaw mcp doctor yandex-disk --probe
 ```
 
-Скачайте из GitHub Releases архив `openclaw-yandex-disk-<версия>.zip` и распакуйте его в `skills` рабочего пространства. Получится `skills/yandex-disk/SKILL.md`. Команда `openclaw skills list` покажет навык. В личном чате попросите «Найди документ на моём Диске». При обновлении замените эту папку из нового архива. Если у вас есть клон репозитория, можно один раз добавить абсолютный путь к его `openclaw/skills` в `skills.load.extraDirs`. В этом случае `git pull --ff-only` обновляет навык. [Релизы](https://github.com/grebennikovxyz/yandex-disk/releases) · [Навыки OpenClaw](https://docs.openclaw.ai/tools/creating-skills)
+Команда `openclaw skills list` покажет установленный навык. В личном чате попросите «Найди документ на моём Диске». Чтобы обновить навык из ClawHub, выполните `openclaw skills update @grebennikovxyz/yandex-disk`. [Навык в ClawHub](https://clawhub.ai/grebennikovxyz/skills/yandex-disk)
+
+Если используете клон GitHub-репозитория, добавьте абсолютный путь к его папке `openclaw/skills` в `skills.load.extraDirs`. В этом случае навык обновляется командой `git pull --ff-only` в клоне. [Настройка навыков OpenClaw](https://docs.openclaw.ai/tools/skills-config)
+
+### Установка из GitHub Releases
+
+- **Windows x64.** Архив `yandex-disk-plugin-<версия>-windows-x64.zip` включает Python и MCP-сервер. Импортируйте ZIP в совместимый клиент. Для входа запустите `connect.cmd` из распакованной папки. Проверить подключение можно в PowerShell из этой папки командой `.\runtime\python.exe -I -m ydisk_plugin.cli status`. Для обновления скачайте новый архив.
+- **Переносимый плагин.** Скачайте `.whl` и `yandex-disk-plugin-<версия>.zip` из одного выпуска. Установите сервер командой `uv tool install --python 3.13 <путь-к-wheel.whl>`, войдите через `yandex-disk-plugin connect` и импортируйте ZIP в клиент.
+- **Навык OpenClaw.** Распакуйте `openclaw-yandex-disk-<версия>.zip` в папку `skills` рабочего пространства. Получится `skills/yandex-disk/SKILL.md`. При обновлении замените эту папку из нового архива.
+
+[Скачать выпуск на GitHub](https://github.com/grebennikovxyz/yandex-disk/releases)
 
 ## Обновления каталогов
 
-Для установки опубликованного навыка из ClawHub используйте `openclaw skills install @grebennikovxyz/yandex-disk`. Отдельный текст навыка OpenClaw распространяется под MIT‑0. Для кода и плагина Codex, ChatGPT и Claude Code действует Apache‑2.0. [Лицензия навыка](openclaw/skills/yandex-disk/LICENSE.md) · [Лицензия проекта](LICENSE)
-
 Номер выпуска задаётся в `pyproject.toml`. При подготовке версии выполните `python scripts/marketplaces.py --sync` и включите изменения в тот же коммит. CI сверяет версии пакета Python, манифестов Codex, ChatGPT, Claude Code и навыка OpenClaw. После отправки новой версии в `main` GitHub Actions запускает тесты на Windows и Linux, проверяет автономный Windows-пакет и публикует архивы с контрольными суммами. Каталоги Codex и Claude Code берут плагин из этого же репозитория. Для получения новых версий подключайте ветку `main`. Пин на тег сохраняет выбранный выпуск.
-
-Пользователям, установившим сервер через uv из GitHub, для обновления локального исполняемого файла нужна команда `uv tool upgrade grebennikov-yandex-disk`. В автономной Windows-сборке сервер входит в новый ZIP.
 
 После выпуска GitHub Actions отправляет в ClawHub только папку `openclaw/skills/yandex-disk` с той же версией. Для публикации нужен секрет репозитория `CLAWHUB_TOKEN` издателя с доступом к `@grebennikovxyz`. При сбое можно повторно запустить workflow **Test and package** из раздела Actions. Видимость версии в каталоге зависит от проверки ClawHub.
 
@@ -192,4 +216,6 @@ yandex-disk-plugin extension --account "Диск A" mirror-add "/Докумен�
 
 Локальные проверки: `uv run --with pytest pytest`. Приёмка с реальным аккаунтом запускается отдельно командой `uv run python tests/live_acceptance.py`. Она создаёт отдельную тестовую папку, редактирует три синтетических документа, кратковременно публикует тестовый файл, отзывает ссылку и в конце перемещает папку в корзину. Тест использует временную запись системного хранилища и удаляет её после завершения.
 
-Лицензия Apache-2.0. При распространении сохраняйте применимое уведомление об авторстве согласно разделу 4(d). Идеи локального поиска и настройки учётных данных изучались по [ydisk-cli](https://github.com/WireCatLabs/ydisk-cli) и [aidj-codex-music](https://github.com/Ilya1510/aidj-codex-music). [LICENSE](LICENSE) · [NOTICE](NOTICE)
+Код и плагин для Codex, ChatGPT и Claude Code распространяются под Apache-2.0. При распространении сохраняйте применимое уведомление об авторстве согласно разделу 4(d). Отдельный текст навыка OpenClaw распространяется под MIT‑0. [LICENSE](LICENSE) · [NOTICE](NOTICE) · [Лицензия навыка OpenClaw](openclaw/skills/yandex-disk/LICENSE.md)
+
+Идеи локального поиска и настройки учётных данных изучались по двум проектам. [ydisk-cli](https://github.com/WireCatLabs/ydisk-cli) · [aidj-codex-music](https://github.com/Ilya1510/aidj-codex-music)
